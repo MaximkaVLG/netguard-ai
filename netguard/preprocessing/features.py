@@ -51,16 +51,19 @@ def prepare_dataset(
     df: pd.DataFrame,
     target: str = "is_attack",
     top_k_features: int = 30,
+    label_encoder: LabelEncoder = None,
 ) -> tuple[pd.DataFrame, pd.Series, StandardScaler, list[str]]:
     """Full preprocessing pipeline: encode, select, scale.
 
     Args:
         df: Raw dataframe from loader
-        target: Target column name
+        target: Target column name ('is_attack' for binary, 'attack_cat' for multiclass)
         top_k_features: Number of features to select (0 = all)
+        label_encoder: Pre-fitted LabelEncoder for multiclass (reuse on test set)
 
     Returns:
         (X_scaled, y, scaler, feature_names)
+        For multiclass: y contains encoded integer labels
     """
     df = df.copy()
 
@@ -69,6 +72,17 @@ def prepare_dataset(
     drop_cols = [c for c in drop_cols if c in df.columns and c != target]
 
     y = df[target].copy()
+
+    # Encode target if it's categorical (multiclass)
+    is_numeric = pd.api.types.is_numeric_dtype(y)
+    if not is_numeric:
+        if label_encoder is None:
+            label_encoder = LabelEncoder()
+            y = pd.Series(label_encoder.fit_transform(y.astype(str)), index=y.index)
+        else:
+            y = pd.Series(label_encoder.transform(y.astype(str)), index=y.index)
+        logger.info("Encoded %d target classes: %s", len(label_encoder.classes_), list(label_encoder.classes_))
+
     df.drop(columns=drop_cols + [target], errors="ignore", inplace=True)
 
     # Encode categoricals
@@ -96,4 +110,4 @@ def prepare_dataset(
     X_scaled, scaler = scale_features(df)
 
     logger.info("Prepared dataset: %d samples, %d features", len(X_scaled), len(feature_names))
-    return X_scaled, y, scaler, feature_names
+    return X_scaled, y, scaler, feature_names, label_encoder

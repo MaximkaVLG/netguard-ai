@@ -133,7 +133,7 @@ elif page == "📊 Analyze Traffic":
             from netguard.preprocessing.features import prepare_dataset
             with st.spinner("Running ML detection..."):
                 try:
-                    X, y, scaler, features = prepare_dataset(df)
+                    X, y, scaler, features, _ = prepare_dataset(df)
                     results = []
                     for name, model in models.items():
                         preds = model.predict(X)
@@ -204,7 +204,7 @@ elif page == "🔍 Explain Prediction":
 
             with st.spinner("Loading data..."):
                 df = load_nsl_kdd(split="test")
-                X, y, scaler, features = prepare_dataset(df)
+                X, y, scaler, features, _ = prepare_dataset(df)
 
             idx = st.slider("Select sample index", 0, min(len(X) - 1, 1000), 0)
 
@@ -280,7 +280,7 @@ elif page == "⚡ Real-Time Monitor":
 
                 with st.spinner("Loading data and model..."):
                     df = load_nsl_kdd(split="test")
-                    X, y, scaler, features = prepare_dataset(df)
+                    X, y, scaler, features, _ = prepare_dataset(df)
                     model = models[model_name]
                     explainer = shap.TreeExplainer(model)
 
@@ -413,7 +413,7 @@ elif page == "📉 Drift Detection":
 
                 with st.spinner("Running drift detection..."):
                     df = load_nsl_kdd(split="test")
-                    X, y, scaler, features = prepare_dataset(df)
+                    X, y, scaler, features, _ = prepare_dataset(df)
                     model = models[model_name]
 
                     # Split: first half = baseline, second half = new data
