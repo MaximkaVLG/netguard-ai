@@ -72,8 +72,11 @@ def load_nsl_kdd(split: str = "train") -> pd.DataFrame:
     return df
 
 
-def load_unsw_nb15() -> pd.DataFrame:
+def load_unsw_nb15(split: str = "train") -> pd.DataFrame:
     """Load UNSW-NB15 dataset.
+
+    Args:
+        split: 'train', 'test', or 'all' (concatenated)
 
     Returns:
         DataFrame with features, 'attack_cat' and 'is_attack' columns
@@ -83,44 +86,54 @@ def load_unsw_nb15() -> pd.DataFrame:
     if not os.path.exists(raw_dir):
         raise FileNotFoundError(
             f"UNSW-NB15 not found at {raw_dir}. "
-            "Download from https://research.unsw.edu.au/projects/unsw-nb15-dataset "
-            "and place CSV files in data/raw/unsw-nb15/"
+            "Run: python data/download_datasets.py --dataset unsw-nb15"
         )
 
-    csv_files = sorted([f for f in os.listdir(raw_dir) if f.endswith(".csv") and "feature" not in f.lower()])
-    if not csv_files:
-        raise FileNotFoundError(f"No CSV files found in {raw_dir}")
+    # Try parquet first (from Hugging Face), then CSV
+    parquet_files = [f for f in os.listdir(raw_dir) if f.endswith(".parquet")]
 
-    # Try to load feature names
-    features_file = os.path.join(raw_dir, "UNSW-NB15_features.csv")
-    if os.path.exists(features_file):
-        features_df = pd.read_csv(features_file, encoding="latin-1")
-        column_names = features_df["Name"].str.strip().tolist()
+    if parquet_files:
+        if split == "all":
+            frames = [pd.read_parquet(os.path.join(raw_dir, f)) for f in parquet_files]
+            df = pd.concat(frames, ignore_index=True)
+        else:
+            fname = f"{split}.parquet"
+            path = os.path.join(raw_dir, fname)
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"File not found: {path}")
+            df = pd.read_parquet(path)
     else:
+        csv_files = sorted([f for f in os.listdir(raw_dir) if f.endswith(".csv") and "feature" not in f.lower()])
+        if not csv_files:
+            raise FileNotFoundError(f"No data files found in {raw_dir}")
+
+        features_file = os.path.join(raw_dir, "UNSW-NB15_features.csv")
         column_names = None
+        if os.path.exists(features_file):
+            features_df = pd.read_csv(features_file, encoding="latin-1")
+            column_names = features_df["Name"].str.strip().tolist()
 
-    frames = []
-    for f in csv_files:
-        path = os.path.join(raw_dir, f)
-        df = pd.read_csv(path, header=0 if column_names is None else None, low_memory=False)
-        if column_names and len(df.columns) == len(column_names):
-            df.columns = column_names
-        frames.append(df)
-
-    df = pd.concat(frames, ignore_index=True)
+        frames = []
+        for f in csv_files:
+            path = os.path.join(raw_dir, f)
+            chunk = pd.read_csv(path, header=0 if column_names is None else None, low_memory=False)
+            if column_names and len(chunk.columns) == len(column_names):
+                chunk.columns = column_names
+            frames.append(chunk)
+        df = pd.concat(frames, ignore_index=True)
 
     # Normalize column names
     df.columns = df.columns.str.strip().str.lower()
 
     # Ensure attack_cat and label exist
     if "attack_cat" in df.columns:
-        df["attack_cat"] = df["attack_cat"].fillna("Normal").str.strip()
+        df["attack_cat"] = df["attack_cat"].astype(str).fillna("Normal").str.strip()
     if "label" in df.columns:
         df["is_attack"] = df["label"].astype(int)
     elif "attack_cat" in df.columns:
         df["is_attack"] = (df["attack_cat"] != "Normal").astype(int)
 
-    logger.info("Loaded UNSW-NB15: %d rows, %d features", len(df), len(df.columns))
+    logger.info("Loaded UNSW-NB15 %s: %d rows, %d features", split, len(df), len(df.columns))
     return df
 
 

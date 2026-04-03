@@ -21,9 +21,11 @@ An intelligent network intrusion detection system that combines multiple ML mode
 
 - **Multi-Model Detection** --- Random Forest, XGBoost (supervised) + Autoencoder (unsupervised anomaly detection)
 - **Explainable AI** --- SHAP-based explanations for every prediction (why was this traffic flagged?)
+- **Drift Detection** --- KS-test, PSI, and performance monitoring to detect model degradation over time
+- **Real-Time Analysis** --- Live traffic classification with per-connection SHAP explanations
 - **Cross-Dataset Validation** --- Evaluated on UNSW-NB15, CIC-IDS2017, and NSL-KDD
 - **Ensemble Voting** --- Combines models for higher accuracy and lower false positives
-- **Web Dashboard** --- Streamlit-based UI for real-time monitoring and analysis
+- **Web Dashboard** --- Streamlit-based UI with 6 interactive pages
 - **Attack Types** --- DoS/DDoS, Port Scanning, Brute Force, Exploits, Backdoors, Fuzzers, Anomalies
 
 ## Quick Start
@@ -99,16 +101,16 @@ Raw Traffic / Dataset
 | **CIC-IDS2017** | 78 | 14 | 2.8M | Cross-validation |
 | **NSL-KDD** | 41 | 4 | 150K | Baseline comparison |
 
-## Results
+## Results (UNSW-NB15)
 
-*Results will be added after training.*
+| Model | Accuracy | F1 | Precision | Recall | AUC |
+|-------|----------|-----|-----------|--------|-----|
+| **XGBoost** | **79.4%** | **86.0%** | 80.1% | **92.7%** | **89.0%** |
+| Random Forest | 75.4% | 83.9% | 75.5% | 94.5% | 83.4% |
+| Ensemble | 77.9% | 82.7% | 88.7% | 77.4% | 88.5% |
+| Autoencoder | 60.4% | 60.4% | 94.6% | 44.3% | 66.1% |
 
-| Model | Dataset | Accuracy | F1 (macro) | Precision | Recall | AUC |
-|-------|---------|----------|-----------|-----------|--------|-----|
-| Random Forest | UNSW-NB15 | - | - | - | - | - |
-| XGBoost | UNSW-NB15 | - | - | - | - | - |
-| Autoencoder | UNSW-NB15 | - | - | - | - | - |
-| Ensemble | UNSW-NB15 | - | - | - | - | - |
+XGBoost achieves the best balance of accuracy and recall. Autoencoder provides highest precision (94.6%) with low false positives --- useful for zero-day anomaly detection.
 
 ## Dashboard
 
