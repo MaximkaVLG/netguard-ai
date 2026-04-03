@@ -127,9 +127,17 @@ def cmd_scan(args):
 
     try:
         probas = model.predict_proba(X)
-        confidence = np.max(probas, axis=1)
+        confidence = probas[:, 1]  # attack probability
     except Exception:
         confidence = np.ones(len(predictions))
+
+    # Apply confidence threshold
+    threshold = getattr(args, 'threshold', 0.0)
+    if threshold > 0:
+        # Only mark as attack if confidence >= threshold
+        predictions = (confidence >= threshold).astype(int)
+        print(f"  Confidence threshold: {threshold:.0%}")
+        print(f"  (Only showing attacks with >= {threshold:.0%} confidence)")
 
     # SHAP explanations for attacks
     try:
@@ -272,6 +280,7 @@ def main():
     scan_p.add_argument("pcap", help="Path to .pcap or .pcapng file")
     scan_p.add_argument("-o", "--output", help="Save report to CSV")
     scan_p.add_argument("--timeout", type=float, default=120, help="Flow timeout in seconds")
+    scan_p.add_argument("--threshold", type=float, default=0.0, help="Minimum confidence to report as attack (0-1, e.g. 0.95)")
 
     # monitor
     mon_p = subparsers.add_parser("monitor", help="Monitor live network traffic")
