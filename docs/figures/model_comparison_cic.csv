@@ -1,0 +1,5 @@
+model,accuracy,precision,recall,f1,auc
+Random Forest,0.9977,0.9958,0.9928,0.9943,0.9999
+XGBoost,0.9985,0.9967,0.9957,0.9962,0.9999
+Autoencoder,0.8535,0.695,0.4603,0.5538,0.7706
+Ensemble,0.9979,0.9981,0.9914,0.9947,0.9999

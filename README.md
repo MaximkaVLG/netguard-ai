@@ -101,7 +101,9 @@ Raw Traffic / Dataset
 | **CIC-IDS2017** | 78 | 14 | 2.8M | Cross-validation |
 | **NSL-KDD** | 41 | 4 | 150K | Baseline comparison |
 
-## Results (UNSW-NB15)
+## Results
+
+### UNSW-NB15 (Primary dataset --- 9 attack types)
 
 | Model | Accuracy | F1 | Precision | Recall | AUC |
 |-------|----------|-----|-----------|--------|-----|
@@ -110,7 +112,21 @@ Raw Traffic / Dataset
 | Ensemble | 77.9% | 82.7% | 88.7% | 77.4% | 88.5% |
 | Autoencoder | 60.4% | 60.4% | 94.6% | 44.3% | 66.1% |
 
-XGBoost achieves the best balance of accuracy and recall. Autoencoder provides highest precision (94.6%) with low false positives --- useful for zero-day anomaly detection.
+### CIC-IDS2017 (Cross-validation --- 14 attack types)
+
+| Model | Accuracy | F1 | Precision | Recall | AUC |
+|-------|----------|-----|-----------|--------|-----|
+| **XGBoost** | **99.85%** | **99.62%** | 99.67% | 99.57% | **99.99%** |
+| Ensemble | 99.79% | 99.47% | 99.81% | 99.14% | 99.99% |
+| Random Forest | 99.77% | 99.43% | 99.58% | 99.28% | 99.99% |
+| Autoencoder | 85.35% | 55.38% | 69.50% | 46.03% | 77.06% |
+
+### Key Findings
+- **XGBoost consistently outperforms** other models across both datasets
+- **Supervised models (RF, XGBoost)** achieve near-perfect results on CIC-IDS2017
+- **UNSW-NB15 is more challenging** --- realistic traffic makes it harder to classify
+- **Autoencoder** provides high precision (low false positives) but lower recall --- useful as a complementary zero-day detector
+- **Ensemble** improves precision while maintaining strong recall
 
 ## Dashboard
 
