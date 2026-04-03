@@ -58,6 +58,27 @@ def prepare_flow_features(df: pd.DataFrame, scaler, feature_names: list) -> pd.D
     # Drop metadata
     df = df.drop(columns=meta_cols, errors="ignore")
 
+    # Clip extreme values to UNSW-NB15 realistic ranges
+    # Single-packet flows produce extreme rate values that break the scaler
+    clip_ranges = {
+        'rate': (0, 1_000_000),
+        'sload': (0, 5_000_000_000),
+        'dload': (0, 5_000_000_000),
+        'sinpkt': (0, 60_000),
+        'dinpkt': (0, 60_000),
+        'sjit': (0, 60_000),
+        'djit': (0, 60_000),
+    }
+    for col, (lo, hi) in clip_ranges.items():
+        if col in df.columns:
+            df[col] = df[col].clip(lo, hi)
+
+    # For single-packet flows (no response), set realistic defaults
+    single_pkt_mask = (df.get('spkts', 0) <= 1) & (df.get('dpkts', 0) == 0)
+    if 'rate' in df.columns:
+        df.loc[single_pkt_mask, 'rate'] = df.loc[single_pkt_mask, 'sbytes'] / df.loc[single_pkt_mask, 'dur'].clip(lower=0.001)
+        df['rate'] = df['rate'].clip(0, 1_000_000)
+
     # Encode categoricals
     df, _ = encode_categorical(df)
 
