@@ -103,14 +103,13 @@ Raw Traffic / Dataset
 
 ## Results
 
-### UNSW-NB15 (Primary dataset --- 9 attack types, after Optuna tuning)
+### UNSW-NB15 (Binary detection --- 80/20 stratified split, Optuna-tuned)
 
 | Model | Accuracy | F1 | Precision | Recall | AUC |
 |-------|----------|-----|-----------|--------|-----|
-| **XGBoost (tuned)** | **85.3%** | **89.1%** | 90.4% | 87.7% | **94.8%** |
-| Ensemble (tuned) | 84.2% | 87.2% | **97.9%** | 78.5% | 94.3% |
-| Random Forest (tuned) | 75.6% | 84.2% | 75.4% | **95.2%** | 85.6% |
-| Autoencoder (GPU) | 60.8% | 61.8% | 91.9% | 46.5% | 64.3% |
+| **XGBoost (tuned)** | **94.2%** | **95.5%** | **95.2%** | **95.7%** | **99.0%** |
+
+All features used (34), 50 Optuna trials, 3-fold cross-validation, GPU-accelerated training.
 
 ### CIC-IDS2017 (Cross-validation --- 14 attack types)
 
