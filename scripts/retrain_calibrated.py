@@ -136,8 +136,29 @@ def main():
     attack_pkts = []
     attack_pkts.extend(generate_attack_port_scan(12, base_time=0))
     attack_pkts.extend(generate_attack_syn_flood(8, base_time=500))
-    attack_pkts.extend(generate_attack_brute_force(8, base_time=1000))
     attack_pkts.extend(generate_attack_dns_amplification(base_time=1500))
+
+    # Custom brute force with clear short-duration pattern
+    for target_idx in range(10):
+        attacker = f"10.{random.randint(50,99)}.{random.randint(0,255)}.{random.randint(1,254)}"
+        target = f"192.168.{random.randint(1,5)}.{random.randint(1,254)}"
+        t = 1000 + target_idx * 80
+        for i in range(random.randint(80, 200)):
+            sport = random.randint(49152, 65535)
+            at = t + i * random.uniform(0.2, 0.8)
+            # SYN
+            attack_pkts.append(Ether()/IP(src=attacker, dst=target)/TCP(sport=sport, dport=22, flags="S", window=1024))
+            attack_pkts[-1].time = at
+            # SYN-ACK
+            attack_pkts.append(Ether()/IP(src=target, dst=attacker)/TCP(sport=22, dport=sport, flags="SA"))
+            attack_pkts[-1].time = at + 0.02
+            # Tiny payload
+            attack_pkts.append(Ether()/IP(src=attacker, dst=target)/TCP(sport=sport, dport=22, flags="PA")/Raw(b"SSH-2.0\r\n"))
+            attack_pkts[-1].time = at + 0.05
+            # RST — key difference: brute force gets rejected fast
+            attack_pkts.append(Ether()/IP(src=target, dst=attacker)/TCP(sport=22, dport=sport, flags="R"))
+            attack_pkts[-1].time = at + 0.1
+
     attack_pkts.sort(key=lambda p: float(p.time))
     wrpcap(os.path.join(OUT, "attack_traffic.pcap"), attack_pkts)
     logger.info("Attack: %d packets", len(attack_pkts))

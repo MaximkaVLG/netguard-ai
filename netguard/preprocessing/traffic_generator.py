@@ -159,7 +159,15 @@ def generate_attack_syn_flood(n_waves: int = 3, base_time: float = 0.0) -> list:
 
 
 def generate_attack_brute_force(n_targets: int = 3, base_time: float = 0.0) -> list:
-    """Generate SSH/RDP brute force attacks."""
+    """Generate SSH/RDP brute force attacks.
+
+    Key characteristics that distinguish from normal SSH:
+    - Very short connection duration (< 2s vs minutes/hours)
+    - Very small packets (< 100 bytes vs 200-500)
+    - Many connections from same IP in short time (high ct_src_dport_ltm)
+    - RST/FIN after 1-3 packets (failed login)
+    - All connections to same port from same source
+    """
     packets = []
     for target_idx in range(n_targets):
         attacker = f"10.{random.randint(50,99)}.{random.randint(0,255)}.{random.randint(1,254)}"
@@ -167,20 +175,45 @@ def generate_attack_brute_force(n_targets: int = 3, base_time: float = 0.0) -> l
         target_port = random.choice([22, 3389])
         t = base_time + target_idx * 60
 
-        # 50-150 rapid connection attempts
-        for i in range(random.randint(50, 150)):
+        # 50-200 rapid connection attempts from SAME attacker IP
+        n_attempts = random.randint(50, 200)
+        for i in range(n_attempts):
             sport = random.randint(49152, 65535)
-            # Quick SYN-SYN/ACK-RST pattern (failed login)
-            packets.append(Ether()/IP(src=attacker, dst=target)/TCP(sport=sport, dport=target_port, flags="S"))
-            packets[-1].time = t + i * random.uniform(0.3, 1.0)
-            packets.append(Ether()/IP(src=target, dst=attacker)/TCP(sport=target_port, dport=sport, flags="SA"))
-            packets[-1].time = t + i * 0.5 + 0.05
-            # Small data exchange (login attempt)
-            packets.append(Ether()/IP(src=attacker, dst=target)/TCP(sport=sport, dport=target_port, flags="PA")/Raw(b"SSH-2.0-attacker\r\n"))
-            packets[-1].time = t + i * 0.5 + 0.1
-            # RST (connection rejected)
-            packets.append(Ether()/IP(src=target, dst=attacker)/TCP(sport=target_port, dport=sport, flags="R"))
-            packets[-1].time = t + i * 0.5 + 0.2
+            attempt_t = t + i * random.uniform(0.2, 0.8)  # Fast: 1-5 attempts/sec
+
+            # Pattern 1: SYN only (port closed or filtered) — 30%
+            # Pattern 2: SYN-SYN/ACK-RST (connection refused) — 40%
+            # Pattern 3: SYN-SYN/ACK-small data-RST (failed auth) — 30%
+            pattern = random.choices([1, 2, 3], weights=[30, 40, 30])[0]
+
+            # SYN
+            packets.append(Ether()/IP(src=attacker, dst=target)/TCP(
+                sport=sport, dport=target_port, flags="S", window=1024))
+            packets[-1].time = attempt_t
+
+            if pattern >= 2:
+                # SYN-ACK
+                packets.append(Ether()/IP(src=target, dst=attacker)/TCP(
+                    sport=target_port, dport=sport, flags="SA", window=65535))
+                packets[-1].time = attempt_t + random.uniform(0.01, 0.05)
+
+            if pattern == 3:
+                # Small data (login attempt — very small payload)
+                payload = random.choice([
+                    b"SSH-2.0-libssh\r\n",
+                    b"SSH-2.0-paramiko\r\n",
+                    b"\x00\x00\x00\x1c",
+                ])
+                packets.append(Ether()/IP(src=attacker, dst=target)/TCP(
+                    sport=sport, dport=target_port, flags="PA")/Raw(payload))
+                packets[-1].time = attempt_t + random.uniform(0.05, 0.15)
+
+            # RST or FIN (quick disconnect)
+            if pattern >= 2:
+                rst_flag = random.choice(["R", "R", "FA"])
+                packets.append(Ether()/IP(src=target, dst=attacker)/TCP(
+                    sport=target_port, dport=sport, flags=rst_flag))
+                packets[-1].time = attempt_t + random.uniform(0.1, 0.3)
 
     return packets
 
