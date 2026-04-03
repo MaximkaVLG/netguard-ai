@@ -396,7 +396,15 @@ class FlowExtractor:
                 for flow_feat in completed:
                     callback(flow_feat)
 
-        sniff(iface=interface, prn=packet_handler, timeout=duration, store=False)
+        import sys
+        if sys.platform == "win32":
+            # Windows: use L3 socket to avoid WinPcap/Npcap L2 requirement
+            from scapy.all import conf as scapy_conf
+            sock = scapy_conf.L3socket(iface=interface)
+            sniff(opened_socket=sock, prn=packet_handler, timeout=duration, store=False)
+            sock.close()
+        else:
+            sniff(iface=interface, prn=packet_handler, timeout=duration, store=False)
 
         # Flush remaining
         remaining = self.flush_flows(force=True)

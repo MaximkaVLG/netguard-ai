@@ -218,14 +218,46 @@ def cmd_monitor(args):
 
     try:
         extractor.extract_live(args.interface, duration=args.duration, callback=on_flow)
-    except PermissionError:
-        logger.error("Permission denied. Run as Administrator for live capture.")
+    except (PermissionError, OSError) as e:
+        if "administrator" in str(e).lower() or "10013" in str(e):
+            print("\n  ERROR: Live capture requires Administrator privileges.")
+            print("  Run this command in an elevated terminal (Run as Administrator).")
+            print("\n  Alternative: capture traffic to pcap first, then scan:")
+            print('    tcpdump -i eth0 -w capture.pcap -c 10000')
+            print('    python -m netguard scan capture.pcap')
+        else:
+            logger.error("Capture error: %s", e)
         sys.exit(1)
 
     print("=" * 70)
     print(f"\n  Monitoring complete.")
     print(f"  Total flows: {flow_count}")
     print(f"  Attacks: {attack_count}")
+
+
+def cmd_interfaces(args):
+    """List available network interfaces."""
+    try:
+        from scapy.all import get_if_list, get_if_addr, conf
+    except ImportError:
+        print("scapy required: pip install scapy")
+        return
+
+    print("\n  Available network interfaces:")
+    print("  " + "-" * 60)
+
+    for iface in get_if_list():
+        try:
+            addr = get_if_addr(iface)
+        except Exception:
+            addr = "?"
+        is_default = " (default)" if iface == str(conf.iface) else ""
+        # Shorten long Windows names
+        short = iface.split("{")[-1].rstrip("}") if "{" in iface else iface
+        print(f"  {short:>38}  {addr:<16}{is_default}")
+
+    print(f"\n  Default interface: {conf.iface}")
+    print(f"\n  Usage: python -m netguard monitor \"{conf.iface}\" --duration 30")
 
 
 def main():
@@ -243,15 +275,25 @@ def main():
 
     # monitor
     mon_p = subparsers.add_parser("monitor", help="Monitor live network traffic")
-    mon_p.add_argument("interface", help="Network interface (e.g., eth0, Wi-Fi)")
+    mon_p.add_argument("interface", nargs="?", default=None, help="Network interface (run 'interfaces' to see list)")
     mon_p.add_argument("--duration", type=int, default=60, help="Capture duration in seconds")
+
+    # interfaces
+    subparsers.add_parser("interfaces", help="List available network interfaces")
 
     args = parser.parse_args()
 
     if args.command == "scan":
         cmd_scan(args)
     elif args.command == "monitor":
+        if args.interface is None:
+            # Use default interface
+            from scapy.all import conf
+            args.interface = str(conf.iface)
+            logger.info("Using default interface: %s", args.interface)
         cmd_monitor(args)
+    elif args.command == "interfaces":
+        cmd_interfaces(args)
     else:
         parser.print_help()
 
