@@ -124,7 +124,7 @@ class AEDetector:
         logger.info("AE model saved to %s", path)
 
     def load(self, path: str):
-        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
         self.encoding_dim = checkpoint["encoding_dim"]
         self.threshold = checkpoint["threshold"]
         self.model = AutoencoderNet(
